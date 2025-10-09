@@ -94,23 +94,25 @@ public class NonEmptyBST<T extends Comparable<T>> implements BST<T> {
 
     @Override
     public BST<T> replaceRange(T start, T end, T newValue) {
-        BST<T> treeAfterRemoval = this.removeRange(start, end);
-        treeAfterRemoval = treeAfterRemoval.insert(newValue);
-        return treeAfterRemoval;
+        BST<T> t = this.removeRange(start, end);  // inclusive removal
+
+        // If newValue lies inside the removed range, skip the insert
+        if (newValue.compareTo(start) >= 0 && newValue.compareTo(end) <= 0) {
+            return t;
+        }
+        return t.insert(newValue);
     }
 
     @Override
     public BST<T> removeRange(T start, T end) {
-        // Recurse into left and right first
+        // clean subtrees first
         _left = _left.removeRange(start, end);
         _right = _right.removeRange(start, end);
 
-        // Now check the current node
+        // inclusive check: start <= _element <= end
         if (_element.compareTo(start) >= 0 && _element.compareTo(end) <= 0) {
-            // Current element is inside the range → remove it
             return this.remove(_element);
         }
-
         return this;
     }
 
