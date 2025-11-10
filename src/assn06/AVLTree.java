@@ -57,11 +57,11 @@ public class AVLTree<T extends Comparable<T>> implements SelfBalancingBST<T> {
     // ================================================
 
     private int nodeHeight(AVLTree<T> node) {
-        return (node == null) ? -1 : node._height;
+        return (node == null || node.isEmpty()) ? -1 : node._height;
     }
 
     private int nodeSize(AVLTree<T> node) {
-        return (node == null) ? 0 : node._size;
+        return (node == null || node.isEmpty()) ? 0 : node._size;
     }
 
     private void update() {
@@ -117,33 +117,43 @@ public class AVLTree<T extends Comparable<T>> implements SelfBalancingBST<T> {
 
     @Override
     public SelfBalancingBST<T> insert(T element) {
+        // Case 0: empty tree → become a single-node tree
         if (isEmpty()) {
             _value = element;
-            _height = 0;
-            _size = 1;
             _left = null;
             _right = null;
+            _height = 0;
+            _size = 1;
             return this;
         }
 
         int cmp = element.compareTo(_value);
+
         if (cmp < 0) {
-            if (_left == null) _left = new AVLTree<>();
+            // go left
+            if (_left == null) {
+                _left = new AVLTree<>();
+            }
             _left = (AVLTree<T>) _left.insert(element);
         } else if (cmp > 0) {
-            if (_right == null) _right = new AVLTree<>();
+            // go right
+            if (_right == null) {
+                _right = new AVLTree<>();
+            }
             _right = (AVLTree<T>) _right.insert(element);
         } else {
-            // duplicate — do nothing
+            // duplicate: do nothing
             return this;
         }
 
-        // Update height and size
-        update();
+        // update metadata
+        _height = 1 + Math.max(nodeHeight(_left), nodeHeight(_right));
+        _size = 1 + nodeSize(_left) + nodeSize(_right);
 
-        // Rebalance
+        // rebalance and return new root of this subtree
         return rebalance();
     }
+
     private AVLTree<T> rebalance() {
         int balance = balanceFactor();
 
@@ -168,34 +178,58 @@ public class AVLTree<T extends Comparable<T>> implements SelfBalancingBST<T> {
 
     @Override
     public SelfBalancingBST<T> remove(T element) {
-        if (isEmpty()) return this;
+        // Case 0: empty tree — nothing to do
+        if (isEmpty()) {
+            return this;
+        }
 
         int cmp = element.compareTo(_value);
+
         if (cmp < 0) {
-            if (_left != null) _left = (AVLTree<T>) _left.remove(element);
+            // go left
+            if (_left != null) {
+                _left = (AVLTree<T>) _left.remove(element);
+            }
         } else if (cmp > 0) {
-            if (_right != null) _right = (AVLTree<T>) _right.remove(element);
+            // go right
+            if (_right != null) {
+                _right = (AVLTree<T>) _right.remove(element);
+            }
         } else {
-            // Found node to remove
+            // === Found the node to remove ===
+
+            boolean leftEmpty  = (_left == null  || _left.isEmpty());
+            boolean rightEmpty = (_right == null || _right.isEmpty());
 
             // Case 1: no children
-            if (_left == null && _right == null) {
-                return new AVLTree<>();
+            if (leftEmpty && rightEmpty) {
+                return new AVLTree<>();  // return an empty tree
             }
 
             // Case 2: one child
-            if (_left == null) return _right;
-            if (_right == null) return _left;
+            if (leftEmpty) {
+                return _right;           // could be non-empty AVLTree or empty, both fine
+            }
+            if (rightEmpty) {
+                return _left;
+            }
 
-            // Case 3: two children -> replace with min from right
+            // Case 3: two children
+            // Use the minimum from the right subtree as successor
             T successor = _right.findMin();
             _value = successor;
             _right = (AVLTree<T>) _right.remove(successor);
         }
 
-        update();
+        // If we reach here, 'this' is still the root of this subtree.
+        // But its height/size might have changed; fix them:
+        _height = 1 + Math.max(nodeHeight(_left), nodeHeight(_right));
+        _size = 1 + nodeSize(_left) + nodeSize(_right);
+
+        // Rebalance and return the (possibly new) root
         return rebalance();
     }
+
 
 
     @Override
